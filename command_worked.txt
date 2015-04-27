@@ -1,0 +1,1 @@
+PYTHONPATH=/home/orm/llvmstuff/llvm/tools/clang/bindings/python/   LD_LIBRARY_PATH=/home/orm/llvmstuff/build//lib ./correlate.py ~/kyotocabinet-1.2.76/kccachedb.h

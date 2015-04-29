@@ -3,6 +3,17 @@ import clang.cindex as c
 from clang.cindex import CursorKind
 import sys
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
 def within_file(strnm):
     def children_in_file(node):
         return (c for c in node.get_children() if str(c.location.file) == strnm)
@@ -77,8 +88,10 @@ def get_coocurrences(classnode, children_fun):
                        lambda n: n.kind == CursorKind.CXX_METHOD, 
                        exclude_subclass)
     
+    functions = find_all()
+    
     fields = find_all(classnode, 
-                      lambda f: f.kind == CursorKind.FIELD_DECL, 
+                      lambda f: f.kind == CursorKind.FIELD_DECL,
                       exclude_subclass)
     
     method_to_member = {}
@@ -117,13 +130,46 @@ def significant_cooc(cooc, min, thresh):
     
     return probs
 
+
+def pad_rows(rows):
+    strlen = lambda elt:  len(str(elt))
+    row_lengths = map(lambda row : map(strlen, row), rows)
+    max_row = reduce(lambda r1,r2: [max(i,j) for i,j in zip(r1,r2)], row_lengths)
+    pad_row = lambda row : [ ' '*(i -len(str(j))) + str(j) for (i,j) in zip(max_row, row) ]
+    padded = map(pad_row, rows)
+    return padded
+
 def display_matrix_table(m):
     pairs = m.keys()
+    
     left = set([l for (l,_) in pairs])
+    counts = [(m[(v,v)],v) for v in left]
+    ordered = [ vname for (_,vname) in  sorted(counts, reverse=True)]
+    
     right = set([r for (_,r) in pairs])
-    print [' '] + list(left)
-    for r in right:
-        print [r] + ["%0.2f" % m.get((l,r), 0) for l in left]
+    assert(left == right)
+    
+    rows = []
+    rows.append([' '] + list(ordered))
+
+    for r in ordered:
+        total = m[(r,r)]
+        acc = [r]
+        for l in ordered:
+            assert(m.get((l,r), 0) == m.get((r,l),0))
+
+            lr = m.get((l,r), 0)
+            if lr == 0:
+                acc.append(" ")
+            else:
+                acc.append("%d/%d" % (lr, total))
+            
+        rows.append(acc)
+
+    padded = pad_rows(rows)
+
+    for r in padded:
+        print r
 
 def get_member_tally(method, children_fun, fields):
     vars = find_all(method, lambda n: n.kind == CursorKind.MEMBER_REF_EXPR, children_fun)
